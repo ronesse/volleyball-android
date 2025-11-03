@@ -19,15 +19,15 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      # Bruker Gradle direkte (uten wrapper) til å bygge prosjektet
-      - name: Build APK
-        uses: gradle/gradle-build-action@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: :app:assembleRelease
           gradle-version: 8.6
 
-      # Last opp APK-en som artefakt slik at du kan laste den ned fra GitHub
-      - name: Upload APK
+      - name: Build APK
+        run: ./gradlew assembleRelease || gradle :app:assembleRelease
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: volleyball-app
