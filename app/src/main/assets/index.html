@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🏐 Volleyball – Norske spillere i utlandet</title>
+  <style>
+    /* ---------- GENERELT ---------- */
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(180deg, #e9eef4 0%, #ffffff 100%);
+      color: #222;
+      margin: 0;
+      padding: 16px;
+      max-width: 900px;
+      margin-inline: auto;
+      line-height: 1.4;
+    }
+    h1, h2 {
+      text-align: center;
+      margin: 0 0 20px 0;
+    }
+
+    .section { margin-top: 30px; }
+
+    /* ---------- KAMP-KORT ---------- */
+    .match {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      transition: 0.2s ease;
+    }
+    .match:hover { transform: scale(1.01); }
+
+    .team {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 30%;
+    }
+
+    .team-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .team img {
+      width: 45px;
+      max-width: 50px;
+      height: auto;
+      border-radius: 50%;
+      border: 1px solid #ccc;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .player {
+      font-size: 0.9em;
+      color: #003b8e;
+      margin-top: 4px;
+    }
+    .player a {
+      color: #003b8e;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .player a:hover { text-decoration: underline; }
+
+    /* ---------- SCORE & STATUS ---------- */
+    .score {
+      font-weight: bold;
+      text-align: center;
+      flex: 0.4;
+    }
+    .live {
+      color: #d00;
+      font-weight: bold;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 50% { opacity: 0.4; } }
+
+    .sets { font-size: 0.9em; margin-top: 6px; color: #333; }
+    .active-set {
+      background: #d00;
+      color: #fff;
+      font-size: 1.2em;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .status {
+      font-style: italic;
+      font-size: 0.85em;
+      color: #555;
+      text-align: center;
+    }
+
+    /* ---------- NEDTELLING ---------- */
+    .countdown-container {
+      margin-top: 4px;
+      text-align: center;
+      font-size: 0.95em;
+    }
+    .countdown {
+      display: block;
+      margin-top: 2px;
+      font-weight: bold;
+    }
+    .countdown.warning { color: orange; }
+    .countdown.critical { color: red; }
+
+    /* ---------- MOBILVISNING ---------- */
+    @media (max-width: 700px) {
+      body { font-size: 1.05em; }
+      .match {
+        flex-direction: column;
+        text-align: center;
+        padding: 12px;
+      }
+      .team { width: 100%; }
+      .score {
+        flex: 1 1 100%;
+        margin: 10px 0;
+      }
+      .active-set { font-size: 1em; }
+      .team-row { flex-wrap: wrap; }
+      .team img { width: 50px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🏐 Volleyball – Norske spillere i utlandet</h1>
+<p style="text-align:center;"><a href="previous.html">📜 Se forrige kamper</a></p>
+
+  <div class="section">
+    <h2>🔴 Live kamper</h2>
+    <div id="live">Laster …</div>
+  </div>
+
+  <div class="section">
+    <h2>📅 Neste kamper + Norske spillere 🇳🇴</h2>
+    <div id="upcoming">Laster …</div>
+  </div>
+
+  <script src="data/volleyball-data.js"></script>
+<script>
+    /* ---------- FAVORITTLAG ---------- */
+    
+
+    /* ---------- NORSKE SPILLERE ---------- */
+    
+
+    /* ---------- FUNKSJONER ---------- */
+    function searchLink(name) {
+      return `https://www.google.com/search?q=${encodeURIComponent('site:volleybox.net ' + name)}`;
+    }
+
+    function renderPlayers(players) {
+      if (!players || players.length === 0) return `<div class="player"><em>Ingen 🇳🇴 spillere</em></div>`;
+      return players.map(p => {
+        const label = `🇳🇴 ${p.name}`;
+        if (p.url && p.url.trim().length > 0)
+          return `<div class="player"><a href="${p.url}" target="_blank">${label}</a></div>`;
+        return `<div class="player">${label} <a href="${searchLink(p.name)}" target="_blank">🔎</a></div>`;
+      }).join("");
+    }
+
+    async function fetchJSON(url) {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Feil ved henting fra " + url);
+      return await resp.json();
+    }
+
+    async function fetchLive() {
+      const data = await fetchJSON("https://api.sofascore.com/api/v1/sport/volleyball/events/live");
+      return data.events || [];
+    }
+
+    async function fetchNextForTeam(teamId) {
+      const data = await fetchJSON(`https://api.sofascore.com/api/v1/team/${teamId}/events/next/0`);
+      return data.events?.[0] || null;
+    }
+
+    async function fetchEventDetails(eventId) {
+      try {
+        const data = await fetchJSON(`https://api.sofascore.com/api/v1/event/${eventId}`);
+        return data.event;
+      } catch { return null; }
+    }
+
+    /* ---------- LIVE VISNING ---------- */
+    async function updateLive() {
+      const container = document.getElementById("live");
+      try {
+        const events = await fetchLive();
+        const myEvents = events.filter(e =>
+          teams.some(t => t.id === e.homeTeam.id || t.id === e.awayTeam.id)
+        );
+
+        if (myEvents.length === 0) {
+          container.innerHTML = "<p>Ingen pågående kamper nå.</p>";
+          return;
+        }
+
+        const detailedEvents = await Promise.all(myEvents.map(e => fetchEventDetails(e.id)));
+        container.innerHTML = detailedEvents.map(e => {
+          const h = e.homeTeam.name, a = e.awayTeam.name;
+          const logoH = `https://api.sofascore.com/api/v1/team/${e.homeTeam.id}/image`;
+          const logoA = `https://api.sofascore.com/api/v1/team/${e.awayTeam.id}/image`;
+          const liveHome = e.homeScore?.display ?? "-";
+          const liveAway = e.awayScore?.display ?? "-";
+          const sets = [];
+          for (let i = 1; i <= 5; i++) {
+            const hs = e.homeScore?.[`period${i}`];
+            const as = e.awayScore?.[`period${i}`];
+            if (hs !== undefined && as !== undefined) sets.push(`${i}. sett: ${hs}-${as}`);
+          }
+          const activeSetHTML = sets.length ? `<div class="active-set">${sets.at(-1)}</div>` : "";
+          const homePlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === e.homeTeam.id)?.volleyboxSlug] || []);
+          const awayPlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === e.awayTeam.id)?.volleyboxSlug] || []);
+
+          return `
+            <div class="match">
+              <div class="team">
+                <div class="team-row">
+                  <img src="${logoH}" alt="${h}">
+                  <div>${h}</div>
+                </div>
+                ${homePlayerHTML}
+              </div>
+              <div class="score">
+                🔥 <span class="live">LIVE</span><br>
+                ${liveHome} – ${liveAway}
+                ${activeSetHTML}
+                <div class="sets">${sets.slice(0,-1).join("<br>")}</div>
+              </div>
+              <div class="team">
+                <div class="team-row">
+                  <div>${a}</div>
+                  <img src="${logoA}" alt="${a}">
+                </div>
+                ${awayPlayerHTML}
+              </div>
+            </div>`;
+        }).join("");
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p>Kunne ikke hente live-data.</p>";
+      }
+    }
+
+    /* ---------- NEDTELLING ---------- */
+    function formatCountdown(secondsLeft) {
+      if (secondsLeft <= 0) return "🏐 Kampen starter nå!";
+      const d = Math.floor(secondsLeft / 86400);
+      const h = Math.floor((secondsLeft % 86400) / 3600);
+      const m = Math.floor((secondsLeft % 3600) / 60);
+      const s = secondsLeft % 60;
+      if (d > 0) return `${d} d ${h} t ${m} m`;
+      if (h > 0) return `${h} t ${m} m ${s} s`;
+      return `${m} m ${s} s`;
+    }
+
+    function updateCountdowns() {
+      document.querySelectorAll(".countdown[data-ts]").forEach(el => {
+        const ts = parseInt(el.getAttribute("data-ts"));
+        const diff = Math.floor(ts - Date.now() / 1000);
+        el.textContent = formatCountdown(diff);
+        el.classList.remove("warning","critical");
+        if (diff < 600) el.classList.add("critical");
+        else if (diff < 3600) el.classList.add("warning");
+      });
+    }
+
+    /* ---------- KOMMENDE KAMPER ---------- */
+    async function updateUpcoming() {
+      const container = document.getElementById("upcoming");
+      container.innerHTML = "";
+      const allEvents = [];
+      for (const team of teams) {
+        try {
+          const event = await fetchNextForTeam(team.id);
+          if (event) allEvents.push({ event, team });
+        } catch (err) { console.error(err); }
+      }
+      allEvents.sort((a, b) => a.event.startTimestamp - b.event.startTimestamp);
+      for (const { event } of allEvents) {
+        const h = event.homeTeam.name, a = event.awayTeam.name;
+        const logoH = `https://api.sofascore.com/api/v1/team/${event.homeTeam.id}/image`;
+        const logoA = `https://api.sofascore.com/api/v1/team/${event.awayTeam.id}/image`;
+        const ts = event.startTimestamp;
+        const time = new Date(ts * 1000).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" });
+        const homePlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === event.homeTeam.id)?.volleyboxSlug] || []);
+        const awayPlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === event.awayTeam.id)?.volleyboxSlug] || []);
+
+        container.innerHTML += `
+          <div class="match">
+            <div class="team">
+              <div class="team-row"><img src="${logoH}" alt="${h}"><div>${h}</div></div>
+              ${homePlayerHTML}
+            </div>
+            <div class="score">
+              ${time}
+              <div class="countdown-container">
+                <div>⏰ Starter om:</div>
+                <div class="countdown" data-ts="${ts}">Laster …</div>
+              </div>
+            </div>
+            <div class="team">
+              <div class="team-row"><div>${a}</div><img src="${logoA}" alt="${a}"></div>
+              ${awayPlayerHTML}
+            </div>
+          </div>`;
+      }
+      updateCountdowns();
+    }
+
+    /* ---------- START ---------- */
+    updateLive();
+    updateUpcoming();
+    setInterval(updateLive, 3000);
+    setInterval(updateUpcoming, 5 * 60 * 1000);
+    setInterval(updateCountdowns, 1000);
+  </script>
+</body>
+</html>

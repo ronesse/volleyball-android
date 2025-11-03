@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🏐 Volleyball – Forrige kamper</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(180deg, #e9eef4 0%, #ffffff 100%);
+      color: #222;
+      margin: 0;
+      padding: 16px;
+      max-width: 900px;
+      margin-inline: auto;
+      line-height: 1.4;
+    }
+    h1, h2 { text-align: center; margin: 0 0 20px 0; }
+    .section { margin-top: 30px; }
+    .match {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid #ddd; border-radius: 12px; background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08); padding: 14px 18px;
+      margin-bottom: 18px;
+    }
+    .team { display: flex; flex-direction: column; align-items: center; width: 30%; }
+    .team-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .team img { width: 45px; height: auto; border-radius: 50%; border: 1px solid #ccc; object-fit: contain; background: #fff; }
+    .player { font-size: 0.9em; color: #003b8e; margin-top: 4px; }
+    .player a { color: #003b8e; text-decoration: none; font-weight: 500; }
+    .player a:hover { text-decoration: underline; }
+    .score { font-weight: bold; text-align: center; flex: 0.4; }
+    .sets { font-size: 0.9em; margin-top: 6px; color: #333; }
+    @media (max-width: 700px) {
+      body { font-size: 1.05em; }
+      .match { flex-direction: column; text-align: center; padding: 12px; }
+      .team { width: 100%; }
+      .score { flex: 1 1 100%; margin: 10px 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🏐 Volleyball – Forrige kamper</h1>
+  <p style="text-align:center;"><a href="index.html">⬅️ Til neste kamper</a></p>
+
+  <div class="section">
+    <h2>📆 Forrige kamper + Norske spillere 🇳🇴</h2>
+    <div id="previous">Laster …</div>
+  </div>
+
+  <script src="data/volleyball-data.js"></script>
+<script>
+  
+
+  
+
+  function renderPlayers(players) {
+    if (!players || players.length === 0) return `<div class="player"><em>Ingen 🇳🇴 spillere</em></div>`;
+    return players.map(p => {
+      const label = `🇳🇴 ${p.name}`;
+      if (p.url && p.url.trim().length > 0)
+        return `<div class="player"><a href="${p.url}" target="_blank">${label}</a></div>`;
+      return `<div class="player">${label}</div>`;
+    }).join("");
+  }
+
+  async function fetchJSON(url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("Feil ved henting fra " + url);
+    return await resp.json();
+  }
+
+  async function fetchLastFinishedForTeam(teamId) {
+    const data = await fetchJSON(`https://api.sofascore.com/api/v1/team/${teamId}/events/last/0`);
+    const events = data.events || [];
+    if (events.length === 0) return null;
+    // sorter fra nyeste til eldste
+    events.sort((a, b) => b.startTimestamp - a.startTimestamp);
+    // returner den første som er ferdigspilt
+    return events.find(e => e.status?.type === "finished") || events[0];
+  }
+
+  async function updatePrevious() {
+    const container = document.getElementById("previous");
+    container.innerHTML = "";
+    const allEvents = [];
+    for (const team of teams) {
+      try {
+        const event = await fetchLastFinishedForTeam(team.id);
+        if (event) allEvents.push({ event, team });
+      } catch (err) { console.error(err); }
+    }
+    allEvents.sort((a, b) => b.event.startTimestamp - a.event.startTimestamp);
+    for (const { event } of allEvents) {
+      const h = event.homeTeam.name, a = event.awayTeam.name;
+      const logoH = `https://api.sofascore.com/api/v1/team/${event.homeTeam.id}/image`;
+      const logoA = `https://api.sofascore.com/api/v1/team/${event.awayTeam.id}/image`;
+      const score = event.homeScore?.display + " – " + event.awayScore?.display;
+      const time = new Date(event.startTimestamp * 1000).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" });
+      const homePlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === event.homeTeam.id)?.volleyboxSlug] || []);
+      const awayPlayerHTML = renderPlayers(norwegianPlayersMap[teams.find(t => t.id === event.awayTeam.id)?.volleyboxSlug] || []);
+
+      container.innerHTML += `
+        <div class="match">
+          <div class="team">
+            <div class="team-row"><img src="${logoH}" alt="${h}"><div>${h}</div></div>
+            ${homePlayerHTML}
+          </div>
+          <div class="score">
+            ${score}<br>
+            <div class="sets">${time}</div>
+          </div>
+          <div class="team">
+            <div class="team-row"><div>${a}</div><img src="${logoA}" alt="${a}"></div>
+            ${awayPlayerHTML}
+          </div>
+        </div>`;
+    }
+  }
+
+  updatePrevious();
+</script>
+
+</body>
+</html>
